@@ -16,13 +16,13 @@ function checkIfUpdateTweet(firstTimeRun){
 function updateTweets() {
 	
 	var oauth = new OAuth.OAuth(
-      'https://api.twitter.com/oauth/request_token',
-      'https://api.twitter.com/oauth/access_token',
-      twitterSecrets.consumer_key,
-      twitterSecrets.consumer_secret,
-      '1.0A',
-      null,
-      'HMAC-SHA1'
+		'https://api.twitter.com/oauth/request_token',
+		'https://api.twitter.com/oauth/access_token',
+		twitterSecrets.consumer_key,
+		twitterSecrets.consumer_secret,
+		'1.0A',
+		null,
+		'HMAC-SHA1'
     );
 	
 	oauth.get(
