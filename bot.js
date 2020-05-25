@@ -23,7 +23,7 @@ function updateTweets() {
 		'1.0A',
 		null,
 		'HMAC-SHA1'
-    );
+	);
 	
 	oauth.get(
 		'https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name=DOTA2&count=1',
