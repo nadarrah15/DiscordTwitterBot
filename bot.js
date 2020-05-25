@@ -9,18 +9,26 @@ var timeToCheckNextTweet;
 var lastTweet = "";
 
 function checkIfUpdateTweet(screenName){
-	for (feed in twitterDict.feeds) {
-		if (feed.screen_name === screenName) {
-			var lastChecked = new Date(feed.last_checked);
-			//checks if updated within the last minute. To avoid rate limiting, pull once per minute
-			if(new Date(lastChecked.getTime() + 60000) <= new Date()) {
-				updateTweets(screenName);
-			}
-			else {
-				lastTweet = feed.last_tweet;
+	fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
+		if (err) {
+			console.error(err);
+		} 
+		else {
+			obj = JSON.parse(data);
+			var feedExists = false;
+			for (var key in obj.feeds) {
+				if (obj.feeds[key].screen_name === screenName) {
+					var lastChecked = new Date(obj.feeds[key].last_checked);
+					//checks if updated within the last minute. To avoid rate limiting, pull once per minute
+					if(new Date(lastChecked.getTime() + 60000) <= new Date()) {
+						updateTweets(screenName);
+					}
+					
+					break;
+				}
 			}
 		}
-	}
+	});
 }
 
 function updateTweets(screenName) {
@@ -67,6 +75,27 @@ function updateTweets(screenName) {
 	);
 }
 
+function getLastTweet(screenName, channelID) {
+	fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
+		var tweet = '';
+		if (err) {
+			console.error(err);
+		} 
+		else {
+			obj = JSON.parse(data);
+			var feedExists = false;
+			for (var key in obj.feeds) {
+				if (obj.feeds[key].screen_name === screenName) {
+					bot.sendMessage({
+						to: channelID,
+						message: obj.feeds[key].last_tweet
+					});
+				}
+			}
+		}
+	});
+}
+
 var bot = new Discord.Client({
 	token: auth.token,
 	autorun: true
@@ -91,10 +120,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				}
 				else {
 					checkIfUpdateTweet(false, args);
-					bot.sendMessage({
-						to: channelID,
-						message: lastTweet
-					});
+					getLastTweet(args, channelID);
 				}
 			break;
 			case 'register':
@@ -113,8 +139,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						else {
 							obj = JSON.parse(data);
 							var feedExists = false;
-							for (feed in obj.feeds) {
-								if(feed.screen_name = args) {
+							for (var key in obj.feeds) {
+								if (obj.feeds[key].screen_name === args) {
 									feedExists = true;
 									break;
 								}
@@ -145,9 +171,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					} 
 					else {
 						obj = JSON.parse(data);
-						var output = "";
-						for (feed in obj.feeds) {
-							output += '`' + feed.screen_name + '` ';
+						var output = '';
+						for (var key in obj.feeds) {
+							output += '`' + obj.feeds[key].screen_name + '` ';
 						}
 						
 						bot.sendMessage({
@@ -156,18 +182,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 						});
 					}
 				});
-				var data = JSON.parse(twitterDict);
-				var output = "";
-				for (feed in data.feeds) {
-					output += '`' + feed.screen_name + '` ';
-				}
-				
-				bot.sendMessage({
-					to: channelID,
-					message: output
-				});
 			break;	
 			case 'tony':
+				if(user === 'BlessedDeathGaming') {
+					bot.sendMessage({
+						to: userID,
+						message: 'Kill yourself'
+					});
+				}
 				bot.sendMessage({
 					to: channelID,
 					message: 'fuck tony'
