@@ -9,26 +9,21 @@ var timeToCheckNextTweet;
 var lastTweet = "";
 
 function checkIfUpdateTweet(screenName){
-	fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
-		if (err) {
-			console.error(err);
-		} 
-		else {
-			obj = JSON.parse(data);
-			var feedExists = false;
-			for (var key in obj.feeds) {
-				if (obj.feeds[key].screen_name === screenName) {
-					var lastChecked = new Date(obj.feeds[key].last_checked);
-					//checks if updated within the last minute. To avoid rate limiting, pull once per minute
-					if(new Date(lastChecked.getTime() + 60000) <= new Date()) {
-						updateTweets(screenName);
-					}
-					
-					break;
-				}
+	var data = fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json');
+	var obj = JSON.parse(data);
+	
+	var feedExists = false;
+	for (var key in obj.feeds) {
+		if (obj.feeds[key].screen_name === screenName) {
+			var lastChecked = new Date(obj.feeds[key].last_checked);
+			//checks if updated within the last minute. To avoid rate limiting, pull once per minute
+			if(new Date(lastChecked.getTime() + 60000) <= new Date()) {
+				updateTweets(screenName);
 			}
+			
+			break;
 		}
-	});
+	}
 }
 
 function updateTweets(screenName) {
@@ -52,48 +47,55 @@ function updateTweets(screenName) {
 			var response = JSON.parse(data);
 			lastTweet = 'https://twitter.com/' + screenName + '/status/' + response[0].id_str;
 			
-			fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
-				if (err) {
-					console.error(err);
-				} 
-				else {
-					obj = JSON.parse(data);
-					obj.feeds.push({
-						screen_name: screenName,
-						last_tweet: lastTweet,
-						last_checked: (new Date()).toString()
-					});
-					json = JSON.stringify(obj);
-					fs.writeFile('./DiscordTwitterBot/twitterFeeds.json', json, 'utf8', function(err, data){
-						if (err) console.error(err);
-					});
-				}
+			var data = fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json');
+			var obj = JSON.parse(data);
+			obj.feeds.push({
+				screen_name: screenName,
+				last_tweet: lastTweet,
+				last_checked: (new Date()).toString()
 			});
-			
-			twitterDict = require('./twitterFeeds');
+			json = JSON.stringify(obj);
+			fs.writeFile('./DiscordTwitterBot/twitterFeeds.json', json, 'utf8', function(err, data){
+				if (err) console.error(err);
+			});
 		}
 	);
 }
 
 function getLastTweet(screenName, channelID) {
-	fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
-		var tweet = '';
-		if (err) {
-			console.error(err);
-		} 
-		else {
-			obj = JSON.parse(data);
-			var feedExists = false;
-			for (var key in obj.feeds) {
-				if (obj.feeds[key].screen_name === screenName) {
-					bot.sendMessage({
-						to: channelID,
-						message: obj.feeds[key].last_tweet
-					});
+	var data = fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json');
+	var tweet = '';
+
+	var obj = JSON.parse(data);
+	var feedExists = false;
+	for (var key in obj.feeds) {
+		if (obj.feeds[key].screen_name === screenName) {
+			bot.sendMessage({
+				to: channelID,
+				message: obj.feeds[key].last_tweet
+			});
+		}
+	}
+}
+
+var intervalFunc = function() {
+	var data = fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json');
+
+	var obj = JSON.parse(data);
+	for (var key in obj.feeds) {
+		var tweet = obj.feeds[key].last_tweet;
+		checkIfUpdateTweet(obj.feeds[key].screen_name);
+		var data2 = fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json');
+		var obj2 = JSON.parse(data);
+		loop : for (var key2 in obj2.feeds) {
+			if (obj.feeds[key].screen_name === obj2.feeds[key2].screen_name) {
+				if (tweet !== obj2.feeds[key2].last_tweet) {
+					getLastTweet(obj.feeds[key].screen_name, '426019751337263114');
 				}
+				break loop;
 			}
 		}
-	});
+	}
 }
 
 var bot = new Discord.Client({
@@ -101,7 +103,8 @@ var bot = new Discord.Client({
 	autorun: true
 });
 bot.on('ready', function (evt) {
-	timeToCheckNextTweet = new Date();
+	var interval = setInterval(intervalFunc, 300000);
+	//channelId = 426019751337263114
 });
 bot.on('message', function (user, userID, channelID, message, evt) {
 	if (message.substring(0, 2) == '**') {
@@ -132,7 +135,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					});
 				}
 				else {
-					fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
+					fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
 						if (err) {
 							console.error(err);
 						} 
@@ -165,7 +168,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 				}
 			break;
 			case 'feeds':
-				fs.readFile('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
+				fs.readFileSync('./DiscordTwitterBot/twitterFeeds.json', 'utf8', function(err, data){
 					if (err) {
 						console.error(err);
 					} 
@@ -200,6 +203,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 					to: channelID,
 					message: 'Commands: `status [twitter handle]` `register [twitter handle]` `feeds` `tony`. When entering a twitter handle, do **NOT** use the `@` symbol'
 				});
+			break;
+			case 'debug':
+				intervalFunc();
+				console.log(user);
+				console.log(userID);
+				console.log(channelID);
+				console.log(message);
+				console.log(evt);
 			break;
 			default:
 				bot.sendMessage({
